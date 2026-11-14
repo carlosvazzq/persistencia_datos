@@ -3,7 +3,21 @@ import 'package:sqflite/sqflite.dart';
 
 import '../models/tarea_model.dart';
 
-class TareaLocalDao {
+abstract interface class TareaLocalDataSource {
+  Future<int> insertarTarea(TareaModel tarea);
+
+  Future<void> insertarTareas(List<TareaModel> tareas);
+
+  Future<List<TareaModel>> obtenerTareas();
+
+  Future<List<TareaModel>> obtenerTareasPendientes();
+
+  Future<int> actualizarTarea(TareaModel tarea);
+
+  Future<int> eliminarTarea(int id);
+}
+
+class TareaLocalDao implements TareaLocalDataSource {
   TareaLocalDao() : _database = _inicializarBaseDeDatos();
 
   static const String _nombreBaseDeDatos = 'tareas_offline.db';
@@ -30,6 +44,7 @@ class TareaLocalDao {
     );
   }
 
+  @override
   Future<int> insertarTarea(TareaModel tarea) async {
     final database = await _database;
 
@@ -40,6 +55,7 @@ class TareaLocalDao {
     );
   }
 
+  @override
   Future<void> insertarTareas(List<TareaModel> tareas) async {
     final database = await _database;
     final batch = database.batch();
@@ -55,6 +71,19 @@ class TareaLocalDao {
     await batch.commit(noResult: true);
   }
 
+  @override
+  Future<List<TareaModel>> obtenerTareas() async {
+    final database = await _database;
+    final rows = await database.query(
+      _nombreTabla,
+      columns: const ['id', 'titulo', 'completada'],
+      orderBy: 'id DESC',
+    );
+
+    return rows.map(TareaModel.fromMap).toList();
+  }
+
+  @override
   Future<List<TareaModel>> obtenerTareasPendientes() async {
     final database = await _database;
     final rows = await database.query(
@@ -65,5 +94,27 @@ class TareaLocalDao {
     );
 
     return rows.map(TareaModel.fromMap).toList();
+  }
+
+  @override
+  Future<int> actualizarTarea(TareaModel tarea) async {
+    final id = tarea.id;
+    if (id == null) {
+      throw ArgumentError('No se puede actualizar una tarea sin id.');
+    }
+
+    final database = await _database;
+    return database.update(
+      _nombreTabla,
+      tarea.toMap(),
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  @override
+  Future<int> eliminarTarea(int id) async {
+    final database = await _database;
+    return database.delete(_nombreTabla, where: 'id = ?', whereArgs: [id]);
   }
 }
