@@ -40,6 +40,21 @@ class TareaLocalDao {
     );
   }
 
+  Future<void> insertarTareas(List<TareaModel> tareas) async {
+    final database = await _database;
+    final batch = database.batch();
+
+    for (final tarea in tareas) {
+      batch.insert(
+        _nombreTabla,
+        tarea.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+
+    await batch.commit(noResult: true);
+  }
+
   Future<List<TareaModel>> obtenerTareasPendientes() async {
     final database = await _database;
     final rows = await database.query(
